@@ -27,6 +27,11 @@ jobs:
       - name: Build application
         run: ./mvnw clean package -DskipTests
 
+      - name: Debug OIDC
+        uses: github/actions-oidc-debugger@main
+        with:
+          audience: sts.amazonaws.com
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
