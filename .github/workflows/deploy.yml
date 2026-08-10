@@ -27,16 +27,14 @@ jobs:
       - name: Build application
         run: ./mvnw clean package -DskipTests
 
-      - name: Debug OIDC
-        uses: github/actions-oidc-debugger@main
-        with:
-          audience: sts.amazonaws.com
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::977778967891:role/GitHubActions-CloudFleet-Deploy
           aws-region: ap-south-1
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
 
       - name: Create deployment package
         run: |
@@ -45,12 +43,12 @@ jobs:
             scripts \
             target/*.jar
 
-      - name: Upload to S3
+      - name: Upload deployment package to S3
         run: |
           aws s3 cp deployment.zip \
             s3://cloudfleet-deploy-977778967891/deployment.zip
 
-      - name: Deploy with CodeDeploy
+      - name: Create CodeDeploy deployment
         run: |
           aws deploy create-deployment \
             --application-name CloudFleet \
