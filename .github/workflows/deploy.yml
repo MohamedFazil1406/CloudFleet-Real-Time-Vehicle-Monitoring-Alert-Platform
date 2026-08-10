@@ -1,0 +1,54 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Build application
+        run: ./mvnw clean package -DskipTests
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::977778967891:role/GitHubActions-CloudFleet-Deploy
+          aws-region: ap-south-1
+
+      - name: Create deployment package
+        run: |
+          zip -r deployment.zip \
+            appspec.yml \
+            scripts \
+            target/*.jar
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp deployment.zip \
+            s3://cloudfleet-deploy-977778967891/deployment.zip
+
+      - name: Deploy with CodeDeploy
+        run: |
+          aws deploy create-deployment \
+            --application-name CloudFleet \
+            --deployment-group-name CloudFleet-Production \
+            --s3-location bucket=cloudfleet-deploy-977778967891,key=deployment.zip,bundleType=zip \
+            --deployment-config-name CodeDeployDefault.OneAtATime
