@@ -9,6 +9,8 @@ import com.fazil.production_backend.repository.GeofenceRepository;
 import com.fazil.production_backend.repository.VehicleLocationRepository;
 import com.fazil.production_backend.repository.VehicleRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -97,8 +99,9 @@ public class LocationService {
         }
     }
 
-    public List<LocationResponse> getLocationHistory(
-            Long vehicleId
+    public Page<LocationResponse> getLocationHistory(
+            Long vehicleId,
+            Pageable pageable
     ) {
 
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
@@ -109,10 +112,11 @@ public class LocationService {
                 );
 
         return locationRepository
-                .findByVehicleOrderByRecordedAtDesc(vehicle)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+                .findByVehicleOrderByRecordedAtDesc(
+                        vehicle,
+                        pageable
+                )
+                .map(this::toResponse);
     }
 
     private void validateLocation(LocationRequest request) {

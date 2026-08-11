@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CloudFleet WebSocket Test</title>
+</head>
+
+<body>
+
+<h2>CloudFleet Real-Time Alerts</h2>
+
+<button onclick="connect()">Connect</button>
+
+<pre id="output"></pre>
+
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.1.1/bundles/stomp.umd.min.js"></script>
+
+<script>
+
+    let client;
+
+    const output = document.getElementById("output");
+
+    function log(message) {
+        output.textContent += message + "\n";
+    }
+
+    function connect() {
+
+        client = new StompJs.Client({
+
+            brokerURL: "ws://localhost:8080/ws",
+
+            reconnectDelay: 5000,
+
+            debug: function(message) {
+                console.log("STOMP:", message);
+            },
+
+            onConnect: function(frame) {
+
+                log("================================");
+                log("STOMP CONNECTED ✅");
+                log("================================");
+
+                client.subscribe(
+                    "/topic/alerts",
+                    function(message) {
+
+                        log("🚨 ALERT RECEIVED");
+                        log(message.body);
+                        log("--------------------------------");
+                    }
+                );
+
+                log("Subscribed to /topic/alerts ✅");
+            },
+
+            onStompError: function(frame) {
+
+                log("STOMP ERROR ❌");
+                log(frame.headers["message"]);
+                log(frame.body);
+            },
+
+            onWebSocketError: function(error) {
+
+                log("WEBSOCKET ERROR ❌");
+
+                console.error(error);
+            }
+        });
+
+        client.activate();
+    }
+
+</script>
+
+</body>
+</html>
