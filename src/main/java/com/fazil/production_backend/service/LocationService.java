@@ -2,8 +2,10 @@ package com.fazil.production_backend.service;
 
 import com.fazil.production_backend.dto.LocationRequest;
 import com.fazil.production_backend.dto.LocationResponse;
+import com.fazil.production_backend.entity.Geofence;
 import com.fazil.production_backend.entity.Vehicle;
 import com.fazil.production_backend.entity.VehicleLocation;
+import com.fazil.production_backend.repository.GeofenceRepository;
 import com.fazil.production_backend.repository.VehicleLocationRepository;
 import com.fazil.production_backend.repository.VehicleRepository;
 import org.springframework.stereotype.Service;
@@ -16,13 +18,19 @@ public class LocationService {
 
     private final VehicleRepository vehicleRepository;
     private final VehicleLocationRepository locationRepository;
+    private final GeofenceRepository geofenceRepository;
+    private final GeofenceEventService geofenceEventService;
 
     public LocationService(
             VehicleRepository vehicleRepository,
-            VehicleLocationRepository locationRepository
+            VehicleLocationRepository locationRepository,
+            GeofenceRepository geofenceRepository,
+            GeofenceEventService geofenceEventService
     ) {
         this.vehicleRepository = vehicleRepository;
         this.locationRepository = locationRepository;
+        this.geofenceRepository = geofenceRepository;
+        this.geofenceEventService = geofenceEventService;
     }
 
     public LocationResponse updateLocation(
@@ -37,6 +45,9 @@ public class LocationService {
                         )
                 );
 
+        validateLocation(request);
+
+        // Save location history
         VehicleLocation location = new VehicleLocation();
 
         location.setVehicle(vehicle);
@@ -56,7 +67,34 @@ public class LocationService {
 
         vehicleRepository.save(vehicle);
 
+        // Check active geofences
+        checkGeofences(
+                vehicle,
+                request.getLatitude(),
+                request.getLongitude()
+        );
+
         return toResponse(savedLocation);
+    }
+
+    private void checkGeofences(
+            Vehicle vehicle,
+            Double latitude,
+            Double longitude
+    ) {
+
+        List<Geofence> activeGeofences =
+                geofenceRepository.findByActiveTrue();
+
+        for (Geofence geofence : activeGeofences) {
+
+            geofenceEventService.processLocation(
+                    vehicle,
+                    geofence,
+                    latitude,
+                    longitude
+            );
+        }
     }
 
     public List<LocationResponse> getLocationHistory(
@@ -75,6 +113,35 @@ public class LocationService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    private void validateLocation(LocationRequest request) {
+
+        if (request.getLatitude() == null ||
+                request.getLatitude() < -90 ||
+                request.getLatitude() > 90) {
+
+            throw new IllegalArgumentException(
+                    "Latitude must be between -90 and 90"
+            );
+        }
+
+        if (request.getLongitude() == null ||
+                request.getLongitude() < -180 ||
+                request.getLongitude() > 180) {
+
+            throw new IllegalArgumentException(
+                    "Longitude must be between -180 and 180"
+            );
+        }
+
+        if (request.getSpeed() != null &&
+                request.getSpeed() < 0) {
+
+            throw new IllegalArgumentException(
+                    "Speed cannot be negative"
+            );
+        }
     }
 
     private LocationResponse toResponse(
