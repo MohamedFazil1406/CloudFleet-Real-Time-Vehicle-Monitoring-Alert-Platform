@@ -27,6 +27,8 @@ public class WebSocketConfig
     ) {
 
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOrigins(
+                        "http://localhost:5173"
+                );
     }
 }
