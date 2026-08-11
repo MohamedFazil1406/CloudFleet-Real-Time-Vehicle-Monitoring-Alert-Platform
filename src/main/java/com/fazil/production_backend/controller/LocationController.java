@@ -36,31 +36,5 @@ public class LocationController {
         );
     }
 
-    @GetMapping("/{vehicleId}/history")
-    public ResponseEntity<Page<LocationResponse>> getVehicleHistory(
-            @PathVariable Long vehicleId,
 
-            @RequestParam(defaultValue = "0")
-            int page,
-
-            @RequestParam(defaultValue = "20")
-            int size
-    ) {
-
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by(
-                        Sort.Direction.DESC,
-                        "recordedAt"
-                )
-        );
-
-        return ResponseEntity.ok(
-                locationService.getLocationHistory(
-                        vehicleId,
-                        pageable
-                )
-        );
-    }
 }
