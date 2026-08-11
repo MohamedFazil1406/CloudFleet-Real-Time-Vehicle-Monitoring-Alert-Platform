@@ -17,15 +17,18 @@ public class GeofenceEventService {
     private final VehicleGeofenceStateRepository stateRepository;
     private final GeofenceEventRepository eventRepository;
     private final GeofenceDetectionService detectionService;
+    private final AlertService alertService;
 
     public GeofenceEventService(
             VehicleGeofenceStateRepository stateRepository,
             GeofenceEventRepository eventRepository,
-            GeofenceDetectionService detectionService
+            GeofenceDetectionService detectionService,
+            AlertService alertService
     ) {
         this.stateRepository = stateRepository;
         this.eventRepository = eventRepository;
         this.detectionService = detectionService;
+        this.alertService = alertService;
     }
 
     public void processLocation(
@@ -84,6 +87,14 @@ public class GeofenceEventService {
                         : GeofenceEventType.EXIT;
 
         saveEvent(
+                vehicle,
+                geofence,
+                eventType,
+                latitude,
+                longitude
+        );
+
+        alertService.createGeofenceAlert(
                 vehicle,
                 geofence,
                 eventType,
