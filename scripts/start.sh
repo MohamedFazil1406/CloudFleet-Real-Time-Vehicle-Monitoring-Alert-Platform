@@ -21,6 +21,7 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 echo "Loading environment variables..."
+
 set -a
 source "$ENV_FILE"
 set +a
