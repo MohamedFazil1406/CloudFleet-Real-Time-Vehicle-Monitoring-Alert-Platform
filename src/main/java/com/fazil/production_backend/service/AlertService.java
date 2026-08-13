@@ -30,6 +30,10 @@ public class AlertService {
         this.alertWebSocketService = alertWebSocketService;
     }
 
+    /* ========================================================= */
+    /* CREATE GEOFENCE ALERT                                      */
+    /* ========================================================= */
+
     public AlertResponse createGeofenceAlert(
             Vehicle vehicle,
             Geofence geofence,
@@ -38,38 +42,160 @@ public class AlertService {
             Double longitude
     ) {
 
-        AlertType alertType =
+        if (vehicle == null) {
+            throw new IllegalArgumentException(
+                    "Vehicle is required"
+            );
+        }
+
+        if (geofence == null) {
+            throw new IllegalArgumentException(
+                    "Geofence is required"
+            );
+        }
+
+        if (eventType == null) {
+            throw new IllegalArgumentException(
+                    "Geofence event type is required"
+            );
+        }
+
+        if (latitude == null || longitude == null) {
+            throw new IllegalArgumentException(
+                    "Vehicle location is required"
+            );
+        }
+
+        /*
+         * Convert ENTER / EXIT event into
+         * frontend AlertType.
+         */
+        AlertType alertType;
+
+        if (eventType == GeofenceEventType.ENTER) {
+
+            alertType =
+                    AlertType.GEOFENCE_ENTER;
+
+        } else if (
+                eventType == GeofenceEventType.EXIT
+        ) {
+
+            alertType =
+                    AlertType.GEOFENCE_EXIT;
+
+        } else {
+
+            throw new IllegalArgumentException(
+                    "Unsupported geofence event type: "
+                            + eventType
+            );
+        }
+
+        /* ===================================================== */
+        /* MESSAGE                                                */
+        /* ===================================================== */
+
+        String message;
+
+        if (
                 eventType == GeofenceEventType.ENTER
-                        ? AlertType.GEOFENCE_ENTER
-                        : AlertType.GEOFENCE_EXIT;
+        ) {
 
-        String message =
-                eventType == GeofenceEventType.ENTER
-                        ? "Vehicle " + vehicle.getVehicleNumber()
-                          + " entered geofence "
-                          + geofence.getName()
-                        : "Vehicle " + vehicle.getVehicleNumber()
-                          + " exited geofence "
-                          + geofence.getName();
+            message =
+                    "Vehicle "
+                            + vehicle.getVehicleNumber()
+                            + " entered geofence "
+                            + geofence.getName();
 
-        Alert alert = new Alert();
+        } else {
 
-        alert.setVehicle(vehicle);
-        alert.setGeofence(geofence);
-        alert.setType(alertType);
-        alert.setMessage(message);
-        alert.setLatitude(latitude);
-        alert.setLongitude(longitude);
-        alert.setCreatedAt(LocalDateTime.now());
+            message =
+                    "Vehicle "
+                            + vehicle.getVehicleNumber()
+                            + " exited geofence "
+                            + geofence.getName();
+        }
 
-        Alert savedAlert = alertRepository.save(alert);
+        /* ===================================================== */
+        /* CREATE ALERT                                           */
+        /* ===================================================== */
 
-        AlertResponse response = toResponse(savedAlert);
+        Alert alert =
+                new Alert();
 
-        alertWebSocketService.broadcastAlert(response);
+        alert.setVehicle(
+                vehicle
+        );
+
+        alert.setGeofence(
+                geofence
+        );
+
+        alert.setType(
+                alertType
+        );
+
+        alert.setMessage(
+                message
+        );
+
+        alert.setLatitude(
+                latitude
+        );
+
+        alert.setLongitude(
+                longitude
+        );
+
+        alert.setCreatedAt(
+                LocalDateTime.now()
+        );
+
+        /* ===================================================== */
+        /* SAVE                                                    */
+        /* ===================================================== */
+
+        Alert savedAlert =
+                alertRepository.save(
+                        alert
+                );
+
+        AlertResponse response =
+                toResponse(
+                        savedAlert
+                );
+
+        /* ===================================================== */
+        /* REAL-TIME BROADCAST                                     */
+        /* ===================================================== */
+
+        try {
+
+            alertWebSocketService.broadcastAlert(
+                    response
+            );
+
+        } catch (Exception exception) {
+
+            /*
+             * The alert is already saved.
+             *
+             * A WebSocket problem should not cause
+             * the vehicle/geofence transaction to fail.
+             */
+            System.err.println(
+                    "Failed to broadcast alert: "
+                            + exception.getMessage()
+            );
+        }
 
         return response;
     }
+
+    /* ========================================================= */
+    /* GET ALL ALERTS                                             */
+    /* ========================================================= */
 
     public List<AlertResponse> getAllAlerts() {
 
@@ -80,37 +206,63 @@ public class AlertService {
                 .toList();
     }
 
+    /* ========================================================= */
+    /* GET VEHICLE ALERTS                                         */
+    /* ========================================================= */
+
     public List<AlertResponse> getVehicleAlerts(
             Long vehicleId
     ) {
 
-        Vehicle vehicle = vehicleRepository.findById(vehicleId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Vehicle not found: " + vehicleId
-                        )
-                );
+        Vehicle vehicle =
+                vehicleRepository
+                        .findById(vehicleId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Vehicle not found: "
+                                                + vehicleId
+                                )
+                        );
 
         return alertRepository
-                .findByVehicleOrderByCreatedAtDesc(vehicle)
+                .findByVehicleOrderByCreatedAtDesc(
+                        vehicle
+                )
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    public AlertResponse getAlert(Long id) {
+    /* ========================================================= */
+    /* GET ALERT                                                  */
+    /* ========================================================= */
 
-        Alert alert = alertRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Alert not found: " + id
-                        )
-                );
+    public AlertResponse getAlert(
+            Long id
+    ) {
 
-        return toResponse(alert);
+        Alert alert =
+                alertRepository
+                        .findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Alert not found: "
+                                                + id
+                                )
+                        );
+
+        return toResponse(
+                alert
+        );
     }
 
-    private AlertResponse toResponse(Alert alert) {
+    /* ========================================================= */
+    /* RESPONSE MAPPER                                            */
+    /* ========================================================= */
+
+    private AlertResponse toResponse(
+            Alert alert
+    ) {
 
         return new AlertResponse(
                 alert.getId(),
