@@ -101,39 +101,29 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        /*
-                         * CORS preflight requests
-                         */
+                        // CORS preflight
                         .requestMatchers(
                                 HttpMethod.OPTIONS,
                                 "/**"
                         ).permitAll()
 
-                        /*
-                         * Authentication endpoints
-                         */
+                        // Authentication
                         .requestMatchers(
                                 "/api/auth/**"
                         ).permitAll()
 
-                        /*
-                         * WebSocket handshake
-                         */
+                        // Health check
+                        .requestMatchers(
+                                "/health",
+                                "/actuator/health"
+                        ).permitAll()
+
+                        // WebSocket
                         .requestMatchers(
                                 "/ws/**"
                         ).permitAll()
 
-                        /*
-                         * Health check
-                         */
-                        .requestMatchers(
-                                "/actuator/health",
-                                "/health"
-                        ).permitAll()
-
-                        /*
-                         * Everything else requires JWT.
-                         */
+                        // Everything else
                         .anyRequest()
                         .authenticated()
                 );
