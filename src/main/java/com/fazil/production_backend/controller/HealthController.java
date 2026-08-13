@@ -6,8 +6,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class HealthController {
 
-    @GetMapping("/api/health")
+    @GetMapping("/health")
     public String health() {
-        return "Fazil Production backend is running Successfully!";
+        return "OK";
     }
 }
