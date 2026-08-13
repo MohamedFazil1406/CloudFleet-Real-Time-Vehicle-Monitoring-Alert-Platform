@@ -8,6 +8,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -17,6 +18,18 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter
+    ) {
+        this.jwtAuthenticationFilter =
+                jwtAuthenticationFilter;
+    }
+
+    /*
+     * Password encoder
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
 
@@ -24,7 +37,7 @@ public class SecurityConfig {
     }
 
     /*
-     * CORS configuration used by Spring Security.
+     * CORS configuration
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -78,54 +91,90 @@ public class SecurityConfig {
         return source;
     }
 
+    /*
+     * Spring Security configuration
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http
     ) throws Exception {
 
         http
+
                 /*
-                 * Enable CORS inside Spring Security.
+                 * Enable CORS
                  */
                 .cors(cors -> {})
 
+                /*
+                 * Disable CSRF because this is
+                 * a stateless JWT API.
+                 */
                 .csrf(csrf ->
                         csrf.disable()
                 )
 
+                /*
+                 * No HTTP session.
+                 */
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
                         )
                 )
 
+                /*
+                 * Authorization rules
+                 */
                 .authorizeHttpRequests(auth -> auth
 
-                        // CORS preflight
+                        /*
+                         * Browser CORS preflight.
+                         */
                         .requestMatchers(
                                 HttpMethod.OPTIONS,
                                 "/**"
                         ).permitAll()
 
-                        // Authentication
+                        /*
+                         * Login / Register
+                         */
                         .requestMatchers(
                                 "/api/auth/**"
                         ).permitAll()
 
-                        // Health check
+                        /*
+                         * Application health check.
+                         *
+                         * AWS ALB uses this endpoint.
+                         */
                         .requestMatchers(
                                 "/health",
                                 "/actuator/health"
                         ).permitAll()
 
-                        // WebSocket
+                        /*
+                         * WebSocket handshake.
+                         */
                         .requestMatchers(
                                 "/ws/**"
                         ).permitAll()
 
-                        // Everything else
+                        /*
+                         * Everything else requires
+                         * a valid JWT.
+                         */
                         .anyRequest()
                         .authenticated()
+                )
+
+                /*
+                 * Run JWT authentication before
+                 * Spring's username/password filter.
+                 */
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
                 );
 
         return http.build();

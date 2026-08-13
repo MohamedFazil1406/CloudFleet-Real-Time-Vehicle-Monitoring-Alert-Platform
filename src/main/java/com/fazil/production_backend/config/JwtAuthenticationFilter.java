@@ -30,6 +30,33 @@ public class JwtAuthenticationFilter
         this.userRepository = userRepository;
     }
 
+    /*
+     * Do not run JWT authentication for public endpoints.
+     */
+    @Override
+    protected boolean shouldNotFilter(
+            HttpServletRequest request
+    ) {
+
+        String path = request.getServletPath();
+
+        return
+                // CORS preflight
+                "OPTIONS".equalsIgnoreCase(
+                        request.getMethod()
+                )
+
+                        // Health checks
+                        || path.equals("/health")
+                        || path.equals("/actuator/health")
+
+                        // Authentication
+                        || path.startsWith("/api/auth/")
+
+                        // WebSocket handshake
+                        || path.startsWith("/ws");
+    }
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -41,8 +68,11 @@ public class JwtAuthenticationFilter
                 request.getHeader("Authorization");
 
         /*
-         * No Authorization header.
-         * Continue the request normally.
+         * No JWT.
+         *
+         * Continue the request.
+         * Spring Security will decide later
+         * whether authentication is required.
          */
         if (
                 authorizationHeader == null ||
@@ -65,10 +95,6 @@ public class JwtAuthenticationFilter
             String email =
                     jwtService.extractEmail(token);
 
-            /*
-             * Only authenticate if there is no
-             * existing authentication.
-             */
             if (
                     email != null &&
                             SecurityContextHolder
@@ -95,8 +121,7 @@ public class JwtAuthenticationFilter
                     SimpleGrantedAuthority authority =
                             new SimpleGrantedAuthority(
                                     "ROLE_" +
-                                            user.getRole()
-                                                    .name()
+                                            user.getRole().name()
                             );
 
                     UsernamePasswordAuthenticationToken authentication =
@@ -117,11 +142,10 @@ public class JwtAuthenticationFilter
         } catch (Exception exception) {
 
             /*
-             * Invalid/expired JWT.
+             * Invalid or expired JWT.
              *
-             * Do not crash the application.
-             * Spring Security will reject the request
-             * if authentication is required.
+             * Clear authentication and let
+             * Spring Security handle the request.
              */
             SecurityContextHolder
                     .clearContext();
