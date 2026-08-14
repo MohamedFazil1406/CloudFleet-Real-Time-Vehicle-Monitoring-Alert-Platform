@@ -47,7 +47,8 @@ public class SecurityConfig {
 
         configuration.setAllowedOrigins(
                 List.of(
-                        "http://localhost:5173"
+                        "http://localhost:5173",
+                        "https://cloud-fleet-frontend-seven.vercel.app/"
                 )
         );
 

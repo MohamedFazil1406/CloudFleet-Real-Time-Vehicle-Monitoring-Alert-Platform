@@ -28,7 +28,8 @@ public class WebSocketConfig
 
         registry.addEndpoint("/ws")
                 .setAllowedOrigins(
-                        "http://localhost:5173"
+                        "http://localhost:5173",
+                        "https://cloud-fleet-frontend-seven.vercel.app/"
                 );
     }
 }
